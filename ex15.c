@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
   
   for( i = 0; i < count; i++)
   {
-    printf("%s has %d years alive.\n", names[i], ages[i]) ;
+    printf("%s has %d years alive.\n", *(names + i), *(ages + i)) ;
   }
  
   printf("---\n");
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
   for( i = 0; i < count; i++)
   {
-    printf("%s is %d years old again.\n", cur_name[i], cur_age[i]);
+    printf("%s is %d years old again.\n", *(cur_name + i), *(cur_age + i));
   }
 
   printf("---\n");
