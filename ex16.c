@@ -17,82 +17,78 @@ struct Person
 };
 
 // method that creates a Person struct
-struct Person * Person_create(char * name, int age, int height, int weight)
+struct Person Person_create(char * name, int age, int height, int weight)
 {
   // allocates a block of memory to the heap that is the size of a Person
-  struct Person * who = malloc( sizeof ( struct Person ));
+  struct Person who;
   // asserts that the malloc function did not return NULL
-  assert(who != NULL);
-
   // assigns a complete copy of the value pointed to by name into the name field in the person struct
-  who->name = strdup(name);
+  who.name = strdup(name);
   // assigns an int to the age value in the person struct
-  who->age = age;
+  who.age = age;
   // assigns an int to the height value in the person struct
-  who->height = height;
+  who.height = height;
   // assigns an int to the weight value in the person struct
-  who->weight = weight;
+  who.weight = weight;
 
   // returns an initialized Person struct
   return who;
 }
 
 //function that deletes a Person struct
-void Person_destroy(struct Person * who)
+void Person_destroy(struct Person who)
 {
-  // validates that the passed in pointer is valid
-  assert(who != NULL);
-
   // releases the c string in the Person struct
-  free(who->name);
+  free(who.name);
   // releases the rest of the memory allocated to the Person struct
-  free(who);
 }
 
 // Function that prints out the values of a Person struct
-void Person_print(struct Person * who)
+void Person_print(struct Person who)
 {
   // Prints the name string in the Person struct
-  printf("Name: %s\n", who->name);
+  printf("Name: %s\n", who.name);
   // Prints the age in the Person struct
-  printf("\tAge: %d\n", who->age);
+  printf("\tAge: %d\n", who.age);
   // Prints the height in the Person struct
-  printf("\tHeight: %d\n", who->height);
+  printf("\tHeight: %d\n", who.height);
   // Prints the weight in the Person struct
-  printf("\tWeight: %d\n", who->weight);
+  printf("\tWeight: %d\n", who.weight);
 }
 
 // Runs the program
 int main(int argc, char *argv[])
 {
   // Creates a person with the appropriate values initialized
-  struct Person * joe = Person_create("Joe Alex", 32, 64, 140);
+  struct Person joe = Person_create("Joe Alex", 32, 64, 140);
   // Creates a person with the appropriate values initialized
-  struct Person * frank = Person_create("Frank Blank", 20, 72, 180);
+  struct Person frank = Person_create("Frank Blank", 20, 72, 180);
 
   // prints the address of Joe
-  printf("Joe is at memory location %p:\n", joe);
+  printf("Joe is at memory location %p:\n", &joe);
   // prints Joe's attributes 
   Person_print(joe);
 
   // prints the address of Frank
-  printf("Frank is at memory location %p:\n", frank);
+  printf("Frank is at memory location %p:\n", &frank);
   // prints Frank's attributes 
   Person_print(frank);
 
   // adds 20 to the age value in the Joe struct
-  joe->age += 20;
+  joe.age += 20;
   // subtracts 2 from the height value in the Joe struct
-  joe->height -= 2;
+  joe.height -= 2;
   // adds 40 to the weight value in the Joe struct
-  joe->weight += 40;
+  joe.weight += 40;
   // Prints the modified Joe struct
   Person_print(joe);
 
-  frank->age += 20;
-  frank->weight += 20;
+  // Updates the frank struct
+  frank.age += 20;
+  frank.weight += 20;
   Person_print(frank);
 
+  // Cleans up the joe and frank structs
   Person_destroy(joe);
   Person_destroy(frank);
 
