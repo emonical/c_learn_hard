@@ -100,7 +100,11 @@ void Database_close(struct Connection * conn)
   if(conn)
   {
     if(conn->file) fclose(conn->file);
-    if(conn->db) free(conn->db);
+    if(conn->db)
+    {
+      free(conn->db->rows);
+      free(conn->db);
+    }
     free(conn);
   }
 }
@@ -164,12 +168,10 @@ void Database_set(struct Connection * conn, int id, const char * name, const cha
 
   int max_data = conn->db->max_data;
 
-  char test[513];
-  memset(test, 'c', 513);
-  safe_strncpy(addr->name, test, max_data);
+  safe_strncpy(addr->name, name, max_data);
   if(!addr->name) die("Name copy failed", conn);
   
-  safe_strncpy(addr->email, email, MAX_DATA);
+  safe_strncpy(addr->email, email, max_data);
   if(!addr->email) die("Email copy failed", conn);
 }
 
