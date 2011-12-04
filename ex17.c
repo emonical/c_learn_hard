@@ -17,13 +17,15 @@ typedef struct Address
 
 typedef struct Database
 {
-  struct Address rows[MAX_ROWS];
+  int max_data;
+  int max_rows;
+  Address * rows;
 } Database;
 
 typedef struct Connection
 {
   FILE *file;
-  struct Database *db;
+  Database *db;
 } Connection;
 
 void Database_close(Connection *);
@@ -54,13 +56,21 @@ void Address_print(Address * addr)
 
 void Database_load(Connection * conn)
 {
-  int rc = fread( conn->db, sizeof ( struct Database ), 1, conn->file);
+  Database * db = conn->db;
+  int rc = fread( &db->max_rows, sizeof ( int ), 1, conn->file);
   if (rc != 1) die("Failed to load database.", conn);
+
+  rc = fread( &db->max_data, sizeof ( int ), 1, conn->file);
+  if (rc != 1) die("Failed to load database.", conn);
+
+  db->rows = malloc ( sizeof ( Address ) * db->max_rows );
+  rc = fread( db->rows, sizeof ( Address ), db->max_rows, conn->file );
+  if (rc != db->max_rows) die("Failed to load database.", conn);
 }
 
 Connection * Database_open(const char * filename, char mode)
 {
-  struct Connection * conn = malloc( sizeof( struct Connection ) );
+  Connection * conn = malloc( sizeof( struct Connection ) );
   if(!conn) die("Memory error", conn);
 
   conn->db = malloc( sizeof ( struct Database ));
@@ -95,26 +105,53 @@ void Database_close(struct Connection * conn)
   }
 }
 
-void Database_create(struct Connection * conn)
+void Database_create(struct Connection * conn, int max_data, int max_rows)
 {
   int i = 0;
 
-  for (i = 0; i < MAX_ROWS; i++)
+  Database * db = conn->db;
+  db->rows = malloc ( sizeof ( Address ) * max_rows );
+  db->max_data = max_data;
+  db->max_rows = max_rows;
+  for (i = 0; i < max_rows; i++)
   {
-    struct Address addr = { .id = i, .set = 0 };
+    Address addr = { .id = i, .set = 0 };
 
-    conn->db->rows[i] = addr;
+    db->rows[i] = addr;
   }
 }
+
 void Database_write(struct Connection * conn)
 {
   rewind(conn->file);
 
-  int rc = fwrite( conn->db, sizeof( struct Database), 1, conn->file );
+  Database * db = conn->db; 
+
+  int rc = fwrite ( &db->max_rows, sizeof ( int ), 1, conn->file );
   if (rc != 1) die("Failed to write database.", conn);
+
+  rc = fwrite ( &db->max_data, sizeof ( int ), 1, conn->file );
+  if (rc != 1) die("Failed to write database.", conn);
+
+  rc = fwrite( db->rows, sizeof( Address ), db->max_rows, conn->file );
+  if (rc != db->max_rows) die("Failed to write database.", conn);
 
   rc = fflush(conn->file);
   if (rc == -1) die("Cannot flush database.", conn);
+}
+
+void safe_strncpy(char * dest, const char * val_to_cpy, int max_length)
+{
+  int val_to_cpy_len = strlen( val_to_cpy );
+  if (val_to_cpy_len < max_length && ( val_to_cpy[val_to_cpy_len] == '\0') )
+  {
+    strncpy(dest, val_to_cpy, max_length);
+  }
+  else
+  {
+    if (max_length > 1) strncpy(dest, val_to_cpy, max_length - 2);
+    dest[max_length - 1] = '\0';
+  }
 }
 
 void Database_set(struct Connection * conn, int id, const char * name, const char * email)
@@ -125,15 +162,17 @@ void Database_set(struct Connection * conn, int id, const char * name, const cha
 
   addr->set = 1;
 
-  //FIXME:
+  int max_data = conn->db->max_data;
 
-  char * res = strncpy(addr->name, name, MAX_DATA);
-
-  if(!res) die("Name copy failed", conn);
+  char test[513];
+  memset(test, 'c', 513);
+  safe_strncpy(addr->name, test, max_data);
+  if(!addr->name) die("Name copy failed", conn);
   
-  res = strncpy(addr->email, email, MAX_DATA);
-  if(!res) die("Email copy failed", conn);
+  safe_strncpy(addr->email, email, MAX_DATA);
+  if(!addr->email) die("Email copy failed", conn);
 }
+
 
 void Database_get(struct Connection * conn, int id)
 {
@@ -158,11 +197,11 @@ void Database_delete(struct Connection * conn, int id)
 void Database_list(struct Connection * conn)
 {
   int i = 0;
-  struct Database * db = conn->db;
+  Database * db = conn->db;
 
-  for(i = 0; i < MAX_ROWS; i++)
+  for(i = 0; i < db->max_rows; i++)
   {
-    struct Address * cur = &db->rows[i] ;
+    Address * cur = &db->rows[i] ;
 
     if(cur->set)
     {
@@ -188,7 +227,7 @@ int main(int argc, char *argv[])
   switch(action)
   {
     case 'c':
-      Database_create(conn);
+      Database_create(conn, MAX_DATA, MAX_ROWS);
       Database_write(conn);
       break;
   
