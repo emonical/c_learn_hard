@@ -18,6 +18,7 @@ typedef struct Address
   int set;
   char * name;
   char * email;
+  char * interests;
 } Address;
 
 typedef struct Database
@@ -59,7 +60,7 @@ void die(const char * message, Connection * conn)
 
 void Address_print(Address * addr)
 {
-  printf("%d %s %s\n", addr->id, addr->name, addr->email);
+  printf("%d %s %s %s\n", addr->id, addr->name, addr->email, addr->interests);
 }
 
 void Database_load(Connection * conn)
@@ -86,6 +87,9 @@ void Database_load(Connection * conn)
     if (rc != 1) die("Failed to load database.", conn);
 
     rc = fread( db->rows[i].email, sizeof ( char ) * db->max_data, 1, conn->file);
+    if (rc != 1) die("Failed to load database.", conn);
+
+    rc = fread( db->rows[i].interests, sizeof ( char ) * db->max_data, 1, conn->file);
     if (rc != 1) die("Failed to load database.", conn);
   }
 }
@@ -146,6 +150,15 @@ void Database_find(const char * field, const char * value, Connection * conn)
         break;
       }
     }
+    else if (strcmp ( field, "interests" ) == 0)
+    {
+      if (strcmp( db->rows[i].interests, value) == 0)
+      {
+        found = TRUE;
+        address = db->rows[i];
+        break;
+      }
+    }
     else
     {
       die ("Field requested is not a searchable field", conn);
@@ -182,9 +195,10 @@ void free_address(Address address)
 {
   free(address.name);
   free(address.email);
+  free(address.interests);
 }
 
-void Database_create(struct Connection * conn, int max_data, int max_rows)
+void Database_create(Connection * conn, int max_data, int max_rows)
 {
   Database * db = conn->db;
   db->max_data = max_data;
@@ -197,7 +211,7 @@ void allocate_rows(Database * db)
   int i = 0;
 
   int max_rows = db->max_rows;
-  db->rows = malloc ( 32 * max_rows );
+  db->rows = malloc ( 40 * max_rows );
 
   for (i = 0; i < max_rows; i++)
   {
@@ -210,12 +224,16 @@ Address create_address(Database * db, int id)
   Address addr = { .id = id, .set = 0 };
 
   addr.name = malloc ( sizeof ( char ) * db->max_data );
-  memset(addr.name, ' ', db->max_data);
+  memset(addr.name, 0, db->max_data);
   addr.name[db->max_data - 1] = '\n';
 
   addr.email = malloc ( sizeof ( char ) * db->max_data );
-  memset(addr.email, ' ', db->max_data);
+  memset(addr.email, 0, db->max_data);
   addr.email[db->max_data - 1] = '\n';
+
+  addr.interests = malloc ( sizeof ( char ) * db->max_data );
+  memset(addr.interests, 0, db->max_data);
+  addr.interests[db->max_data - 1] = '\n';
 
   return addr;
 }
@@ -246,8 +264,10 @@ void Database_write(struct Connection * conn)
 
     rc = fwrite( db->rows[i].email, sizeof ( char ) * db->max_data, 1, conn->file);
     if (rc != 1) die("Failed to write database.", conn);
-  }
 
+    rc = fwrite( db->rows[i].interests, sizeof ( char ) * db->max_data, 1, conn->file);
+    if (rc != 1) die("Failed to write database.", conn);
+  }
 
   rc = fflush(conn->file);
   if (rc == -1) die("Cannot flush database.", conn);
@@ -267,7 +287,7 @@ void safe_strncpy(char * dest, const char * val_to_cpy, int max_length)
   }
 }
 
-void Database_set(struct Connection * conn, int id, const char * name, const char * email)
+void Database_set(Connection * conn, int id, const char * name, const char * email, const char * interests)
 {
   struct Address * addr = &conn->db->rows[id];
 
@@ -282,6 +302,12 @@ void Database_set(struct Connection * conn, int id, const char * name, const cha
 
   safe_strncpy(addr->email, email, max_data);
   if(!addr->email) die("Email copy failed", conn);
+
+  if (interests != NULL)
+  {
+    safe_strncpy(addr->interests, interests, max_data);
+    if(!addr->interests) die("Interests copy failed", conn);
+  }
 }
 
 
@@ -299,14 +325,14 @@ void Database_get(struct Connection * conn, int id)
   }
 }
 
-void Database_delete(struct Connection * conn, int id)
+void Database_delete(Connection * conn, int id)
 {
   Address addr = create_address(conn->db, id);
   free_address(conn->db->rows[id]);
   conn->db->rows[id] = addr;
 }
 
-void Database_list(struct Connection * conn)
+void Database_list(Connection * conn)
 {
   int i = 0;
   Database * db = conn->db;
@@ -350,9 +376,16 @@ int main(int argc, char *argv[])
       break;
 
     case 's':
-      if (argc != 6) die ("Need id, name, email to set", conn);
+      if (argc == 7)
+      {
+        Database_set(conn, id, argv[4], argv[5], argv[6]);
+      } 
+      else if (argc == 6)
+      {
+        Database_set(conn, id, argv[4], argv[5], NULL);
+      }
+      else die ("Need id, name, email to set, optional interests", conn);
 
-      Database_set(conn, id, argv[4], argv[5]);
       Database_write(conn);
       break;
 
@@ -381,4 +414,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-
